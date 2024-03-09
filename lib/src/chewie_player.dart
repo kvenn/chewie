@@ -317,7 +317,9 @@ class ChewieController<T> extends ChangeNotifier {
             ? ChewieVideoPlayerController(videoPlayerController)
                 as ChewieControllerInterface<T>
             : chewieVideoController! {
-    _initialize();
+    if (videoPlayerController is VideoPlayerController) {
+      _initialize();
+    }
   }
 
   ChewieController<T> copyWith({

@@ -223,8 +223,8 @@ class _ProgressBarPainter extends CustomPainter {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromPoints(
-            Offset(start, baseOffset),
-            Offset(end, baseOffset + barHeight),
+            Offset(start.isNaN ? 0 : start, baseOffset),
+            Offset(end.isNaN ? 0 : end, baseOffset + barHeight),
           ),
           const Radius.circular(4.0),
         ),

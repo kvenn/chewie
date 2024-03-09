@@ -26,7 +26,7 @@ class ChewieVlcPlayerController
         DurationRange(
             const Duration(milliseconds: 0),
             Duration(
-                milliseconds: (vlcPlayerController.value.bufferPercent *
+                milliseconds: ((vlcPlayerController.value.bufferPercent / 100) *
                         duration.inMilliseconds)
                     .round()))
       ];

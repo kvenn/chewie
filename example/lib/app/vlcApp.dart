@@ -50,12 +50,13 @@ class _ChewieVlcDemoState extends State<ChewieVlcDemo> {
   ];
 
   Future<void> initializePlayer() async {
-    _videoPlayerController1 = VlcPlayerController.network(srcs[currPlayIndex]);
-    _videoPlayerController2 = VlcPlayerController.network(srcs[currPlayIndex]);
-    await Future.wait([
-      _videoPlayerController1.initialize(),
-      _videoPlayerController2.initialize()
-    ]);
+    _videoPlayerController1 =
+        VlcPlayerController.network(srcs[currPlayIndex], autoPlay: true);
+    _videoPlayerController2 =
+        VlcPlayerController.network(srcs[currPlayIndex], autoPlay: true);
+    // Post frame callback
+    // await _videoPlayerController1.initialize();
+    // await _videoPlayerController2.initialize();
     _createChewieController();
     setState(() {});
   }
@@ -113,6 +114,16 @@ class _ChewieVlcDemoState extends State<ChewieVlcDemo> {
     _chewieController = ChewieController(
       chewieVideoController: ChewieVlcPlayerController(
           vlcPlayerController: _videoPlayerController1),
+      videoPlayerWidgetBuilder: () {
+        return VlcPlayer(
+          controller: _videoPlayerController1,
+          aspectRatio: 16 / 9,
+          placeholder: Container(
+            height: 250,
+            color: Colors.grey,
+          ),
+        );
+      },
       autoPlay: true,
       looping: true,
       progressIndicatorDelay:
@@ -140,7 +151,7 @@ class _ChewieVlcDemoState extends State<ChewieVlcDemo> {
               ),
       ),
 
-      hideControlsTimer: const Duration(seconds: 1),
+      hideControlsTimer: const Duration(seconds: 5),
 
       // Try playing around with some of these other options:
 
@@ -184,9 +195,7 @@ class _ChewieVlcDemoState extends State<ChewieVlcDemo> {
           children: <Widget>[
             Expanded(
               child: Center(
-                child: _chewieController != null &&
-                        _chewieController!
-                            .videoPlayerController.value.isInitialized
+                child: _chewieController != null
                     ? Chewie(
                         controller: _chewieController!,
                       )

@@ -38,7 +38,7 @@ class CupertinoControls extends StatefulWidget {
 class _CupertinoControlsState extends State<CupertinoControls>
     with SingleTickerProviderStateMixin {
   late PlayerNotifier notifier;
-  late VideoPlayerValue _latestValue;
+  late ChewieControllerInterface _latestValue;
   double? _latestVolume;
   Timer? _hideTimer;
   final marginSize = 5.0;
@@ -50,7 +50,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
   Timer? _bufferingDisplayTimer;
   bool _displayBufferingIndicator = false;
   double selectedSpeed = 1.0;
-  late VideoPlayerController controller;
+  late ChewieControllerInterface controller;
 
   // We know that _chewieController is set in didChangeDependencies
   ChewieController get chewieController => _chewieController!;
@@ -68,7 +68,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
       return chewieController.errorBuilder != null
           ? chewieController.errorBuilder!(
               context,
-              chewieController.videoPlayerController.value.errorDescription!,
+              chewieController.videoPlayerController.errorDescription!,
             )
           : const Center(
               child: Icon(
@@ -346,7 +346,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
   }
 
   Widget _buildHitArea() {
-    final bool isFinished = _latestValue.position >= _latestValue.duration;
+    final bool isFinished = _latestValue.valuePosition >= _latestValue.duration;
     final bool showPlayButton =
         widget.showPlayButton && !_latestValue.isPlaying && !_dragging;
 
@@ -364,7 +364,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
         backgroundColor: widget.backgroundColor,
         iconColor: widget.iconColor,
         isFinished: isFinished,
-        isPlaying: controller.value.isPlaying,
+        isPlaying: controller.isPlaying,
         show: showPlayButton,
         onPressed: _playPause,
       ),
@@ -372,7 +372,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
   }
 
   GestureDetector _buildMuteButton(
-    VideoPlayerController controller,
+    ChewieControllerInterface controller,
     Color backgroundColor,
     Color iconColor,
     double barHeight,
@@ -385,7 +385,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
         if (_latestValue.volume == 0) {
           controller.setVolume(_latestVolume ?? 0.5);
         } else {
-          _latestVolume = controller.value.volume;
+          _latestVolume = controller.volume;
           controller.setVolume(0.0);
         }
       },
@@ -418,7 +418,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
   }
 
   GestureDetector _buildPlayPause(
-    VideoPlayerController controller,
+    ChewieControllerInterface controller,
     Color iconColor,
     double barHeight,
   ) {
@@ -433,14 +433,14 @@ class _CupertinoControlsState extends State<CupertinoControls>
         ),
         child: AnimatedPlayPause(
           color: widget.iconColor,
-          playing: controller.value.isPlaying,
+          playing: controller.isPlaying,
         ),
       ),
     );
   }
 
   Widget _buildPosition(Color iconColor) {
-    final position = _latestValue.position;
+    final position = _latestValue.valuePosition;
 
     return Padding(
       padding: const EdgeInsets.only(right: 12.0),
@@ -455,7 +455,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
   }
 
   Widget _buildRemaining(Color iconColor) {
-    final position = _latestValue.duration - _latestValue.position;
+    final position = _latestValue.duration - _latestValue.valuePosition;
 
     return Padding(
       padding: const EdgeInsets.only(right: 12.0),
@@ -539,7 +539,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
   }
 
   GestureDetector _buildSpeedButton(
-    VideoPlayerController controller,
+    ChewieControllerInterface controller,
     Color iconColor,
     double barHeight,
   ) {
@@ -644,7 +644,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
 
     _updateState();
 
-    if (controller.value.isPlaying || chewieController.autoPlay) {
+    if (controller.isPlaying || chewieController.autoPlay) {
       _startHideTimer();
     }
 
@@ -726,17 +726,17 @@ class _CupertinoControlsState extends State<CupertinoControls>
   }
 
   void _playPause() {
-    final isFinished = _latestValue.position >= _latestValue.duration;
+    final isFinished = _latestValue.valuePosition >= _latestValue.duration;
 
     setState(() {
-      if (controller.value.isPlaying) {
+      if (controller.isPlaying) {
         notifier.hideStuff = false;
         _hideTimer?.cancel();
         controller.pause();
       } else {
         _cancelAndRestartTimer();
 
-        if (!controller.value.isInitialized) {
+        if (!controller.isInitialized) {
           controller.initialize().then((_) {
             controller.play();
           });
@@ -753,8 +753,8 @@ class _CupertinoControlsState extends State<CupertinoControls>
   Future<void> _skipBack() async {
     _cancelAndRestartTimer();
     final beginning = Duration.zero.inMilliseconds;
-    final skip =
-        (_latestValue.position - const Duration(seconds: 15)).inMilliseconds;
+    final skip = (_latestValue.valuePosition - const Duration(seconds: 15))
+        .inMilliseconds;
     await controller.seekTo(Duration(milliseconds: math.max(skip, beginning)));
     // Restoring the video speed to selected speed
     // A delay of 1 second is added to ensure a smooth transition of speed after reversing the video as reversing is an asynchronous function
@@ -766,8 +766,8 @@ class _CupertinoControlsState extends State<CupertinoControls>
   Future<void> _skipForward() async {
     _cancelAndRestartTimer();
     final end = _latestValue.duration.inMilliseconds;
-    final skip =
-        (_latestValue.position + const Duration(seconds: 15)).inMilliseconds;
+    final skip = (_latestValue.valuePosition + const Duration(seconds: 15))
+        .inMilliseconds;
     await controller.seekTo(Duration(milliseconds: math.min(skip, end)));
     // Restoring the video speed to selected speed
     // A delay of 1 second is added to ensure a smooth transition of speed after forwarding the video as forwaring is an asynchronous function
@@ -799,7 +799,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
 
     // display the progress bar indicator only after the buffering delay if it has been set
     if (chewieController.progressIndicatorDelay != null) {
-      if (controller.value.isBuffering) {
+      if (controller.isBuffering) {
         _bufferingDisplayTimer ??= Timer(
           chewieController.progressIndicatorDelay!,
           _bufferingTimerTimeout,
@@ -810,12 +810,12 @@ class _CupertinoControlsState extends State<CupertinoControls>
         _displayBufferingIndicator = false;
       }
     } else {
-      _displayBufferingIndicator = controller.value.isBuffering;
+      _displayBufferingIndicator = controller.isBuffering;
     }
 
     setState(() {
-      _latestValue = controller.value;
-      _subtitlesPosition = controller.value.position;
+      _latestValue = controller;
+      _subtitlesPosition = controller.valuePosition;
     });
   }
 }

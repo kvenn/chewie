@@ -10,6 +10,7 @@ environment:
 dependencies:
   chewie:
     path: ../
+  flutter_vlc_player: ^7.4.1
   flutter:
     sdk: flutter
 

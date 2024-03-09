@@ -16,7 +16,7 @@ class VideoProgressBar extends StatefulWidget {
   })  : colors = colors ?? ChewieProgressColors(),
         super(key: key);
 
-  final VideoPlayerController controller;
+  final ChewieControllerInterface controller;
   final ChewieProgressColors colors;
   final Function()? onDragStart;
   final Function()? onDragEnd;
@@ -43,7 +43,7 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
 
   Offset? _latestDraggableOffset;
 
-  VideoPlayerController get controller => widget.controller;
+  ChewieControllerInterface get controller => widget.controller;
 
   @override
   void initState() {
@@ -59,7 +59,7 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
 
   void _seekToRelativePosition(Offset globalPosition) {
     controller.seekTo(context.calcRelativePosition(
-      controller.value.duration,
+      controller.duration,
       globalPosition,
     ));
   }
@@ -69,7 +69,7 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
     final ChewieController chewieController = ChewieController.of(context);
     final child = Center(
       child: StaticProgressBar(
-        value: controller.value,
+        value: controller,
         colors: widget.colors,
         barHeight: widget.barHeight,
         handleHeight: widget.handleHeight,
@@ -81,10 +81,10 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
     return chewieController.draggableProgressBar
         ? GestureDetector(
             onHorizontalDragStart: (DragStartDetails details) {
-              if (!controller.value.isInitialized) {
+              if (!controller.isInitialized) {
                 return;
               }
-              _controllerWasPlaying = controller.value.isPlaying;
+              _controllerWasPlaying = controller.isPlaying;
               if (_controllerWasPlaying) {
                 controller.pause();
               }
@@ -92,7 +92,7 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
               widget.onDragStart?.call();
             },
             onHorizontalDragUpdate: (DragUpdateDetails details) {
-              if (!controller.value.isInitialized) {
+              if (!controller.isInitialized) {
                 return;
               }
               _latestDraggableOffset = details.globalPosition;
@@ -113,7 +113,7 @@ class _VideoProgressBarState extends State<VideoProgressBar> {
               widget.onDragEnd?.call();
             },
             onTapDown: (TapDownDetails details) {
-              if (!controller.value.isInitialized) {
+              if (!controller.isInitialized) {
                 return;
               }
               _seekToRelativePosition(details.globalPosition);
@@ -136,7 +136,7 @@ class StaticProgressBar extends StatelessWidget {
   }) : super(key: key);
 
   final Offset? latestDraggableOffset;
-  final VideoPlayerValue value;
+  final ChewieControllerInterface value;
   final ChewieProgressColors colors;
 
   final double barHeight;
@@ -178,7 +178,7 @@ class _ProgressBarPainter extends CustomPainter {
     required this.draggableValue,
   });
 
-  VideoPlayerValue value;
+  ChewieControllerInterface value;
   ChewieProgressColors colors;
 
   final double barHeight;
@@ -213,7 +213,7 @@ class _ProgressBarPainter extends CustomPainter {
     }
     final double playedPartPercent = (draggableValue != null
             ? draggableValue!.inMilliseconds
-            : value.position.inMilliseconds) /
+            : value.valuePosition.inMilliseconds) /
         value.duration.inMilliseconds;
     final double playedPart =
         playedPartPercent > 1 ? size.width : playedPartPercent * size.width;

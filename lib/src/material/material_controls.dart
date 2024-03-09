@@ -31,7 +31,7 @@ class MaterialControls extends StatefulWidget {
 class _MaterialControlsState extends State<MaterialControls>
     with SingleTickerProviderStateMixin {
   late PlayerNotifier notifier;
-  late VideoPlayerValue _latestValue;
+  late ChewieControllerInterface _latestValue;
   double? _latestVolume;
   Timer? _hideTimer;
   Timer? _initTimer;
@@ -46,7 +46,7 @@ class _MaterialControlsState extends State<MaterialControls>
   final barHeight = 48.0 * 1.5;
   final marginSize = 5.0;
 
-  late VideoPlayerController controller;
+  late ChewieControllerInterface controller;
   ChewieController? _chewieController;
 
   // We know that _chewieController is set in didChangeDependencies
@@ -63,7 +63,7 @@ class _MaterialControlsState extends State<MaterialControls>
     if (_latestValue.hasError) {
       return chewieController.errorBuilder?.call(
             context,
-            chewieController.videoPlayerController.value.errorDescription!,
+            chewieController.videoPlayerController.errorDescription!,
           ) ??
           const Center(
             child: Icon(
@@ -304,7 +304,7 @@ class _MaterialControlsState extends State<MaterialControls>
   }
 
   GestureDetector _buildMuteButton(
-    VideoPlayerController controller,
+    ChewieControllerInterface controller,
   ) {
     return GestureDetector(
       onTap: () {
@@ -313,7 +313,7 @@ class _MaterialControlsState extends State<MaterialControls>
         if (_latestValue.volume == 0) {
           controller.setVolume(_latestVolume ?? 0.5);
         } else {
-          _latestVolume = controller.value.volume;
+          _latestVolume = controller.volume;
           controller.setVolume(0.0);
         }
       },
@@ -363,7 +363,7 @@ class _MaterialControlsState extends State<MaterialControls>
   }
 
   Widget _buildHitArea() {
-    final bool isFinished = _latestValue.position >= _latestValue.duration;
+    final bool isFinished = _latestValue.valuePosition >= _latestValue.duration;
     final bool showPlayButton =
         widget.showPlayButton && !_dragging && !notifier.hideStuff;
 
@@ -389,7 +389,7 @@ class _MaterialControlsState extends State<MaterialControls>
         backgroundColor: Colors.black54,
         iconColor: Colors.white,
         isFinished: isFinished,
-        isPlaying: controller.value.isPlaying,
+        isPlaying: controller.isPlaying,
         show: showPlayButton,
         onPressed: _playPause,
       ),
@@ -419,7 +419,7 @@ class _MaterialControlsState extends State<MaterialControls>
   }
 
   Widget _buildPosition(Color? iconColor) {
-    final position = _latestValue.position;
+    final position = _latestValue.valuePosition;
     final duration = _latestValue.duration;
 
     return RichText(
@@ -490,7 +490,7 @@ class _MaterialControlsState extends State<MaterialControls>
 
     _updateState();
 
-    if (controller.value.isPlaying || chewieController.autoPlay) {
+    if (controller.isPlaying || chewieController.autoPlay) {
       _startHideTimer();
     }
 
@@ -518,17 +518,17 @@ class _MaterialControlsState extends State<MaterialControls>
   }
 
   void _playPause() {
-    final isFinished = _latestValue.position >= _latestValue.duration;
+    final isFinished = _latestValue.valuePosition >= _latestValue.duration;
 
     setState(() {
-      if (controller.value.isPlaying) {
+      if (controller.isPlaying) {
         notifier.hideStuff = false;
         _hideTimer?.cancel();
         controller.pause();
       } else {
         _cancelAndRestartTimer();
 
-        if (!controller.value.isInitialized) {
+        if (!controller.isInitialized) {
           controller.initialize().then((_) {
             controller.play();
           });
@@ -565,7 +565,7 @@ class _MaterialControlsState extends State<MaterialControls>
 
     // display the progress bar indicator only after the buffering delay if it has been set
     if (chewieController.progressIndicatorDelay != null) {
-      if (controller.value.isBuffering) {
+      if (controller.isBuffering) {
         _bufferingDisplayTimer ??= Timer(
           chewieController.progressIndicatorDelay!,
           _bufferingTimerTimeout,
@@ -576,12 +576,12 @@ class _MaterialControlsState extends State<MaterialControls>
         _displayBufferingIndicator = false;
       }
     } else {
-      _displayBufferingIndicator = controller.value.isBuffering;
+      _displayBufferingIndicator = controller.isBuffering;
     }
 
     setState(() {
-      _latestValue = controller.value;
-      _subtitlesPosition = controller.value.position;
+      _latestValue = controller;
+      _subtitlesPosition = controller.valuePosition;
     });
   }
 

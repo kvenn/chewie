@@ -189,9 +189,8 @@ class ChewieState extends State<Chewie> {
   }
 
   void onEnterFullScreen() {
-    final videoWidth = widget.controller.videoPlayerController.value.size.width;
-    final videoHeight =
-        widget.controller.videoPlayerController.value.size.height;
+    final videoWidth = widget.controller.videoPlayerController.size.width;
+    final videoHeight = widget.controller.videoPlayerController.size.height;
 
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
 
@@ -242,7 +241,7 @@ class ChewieState extends State<Chewie> {
   ///When viewing full screen on web, returning from full screen causes original video to lose the picture.
   ///We re initialise controllers for web only when returning from full screen
   void _reInitializeControllers() {
-    final prevPosition = widget.controller.videoPlayerController.value.position;
+    final prevPosition = widget.controller.videoPlayerController.valuePosition;
     widget.controller.videoPlayerController.initialize().then((_) async {
       widget.controller._initialize();
       widget.controller.videoPlayerController.seekTo(prevPosition);
@@ -262,9 +261,11 @@ class ChewieState extends State<Chewie> {
 /// changes to the playback, such as a change to the seek position of the
 /// player, please use the standard information provided by the
 /// `VideoPlayerController`.
-class ChewieController extends ChangeNotifier {
+class ChewieController<T> extends ChangeNotifier {
   ChewieController({
-    required this.videoPlayerController,
+    VideoPlayerController? videoPlayerController,
+    ChewieControllerInterface<T>? chewieVideoController,
+    this.videoPlayerWidgetBuilder,
     this.optionsTranslation,
     this.aspectRatio,
     this.autoInitialize = false,
@@ -304,15 +305,25 @@ class ChewieController extends ChangeNotifier {
     this.progressIndicatorDelay,
     this.hideControlsTimer = defaultHideControlsTimer,
     this.controlsSafeAreaMinimum = EdgeInsets.zero,
-  }) : assert(
+  })  : assert(
+          videoPlayerController != null || chewieVideoController != null,
+          'You must provide a VideoPlayerController or ChewieController',
+        ),
+        assert(
           playbackSpeeds.every((speed) => speed > 0),
           'The playbackSpeeds values must all be greater than 0',
-        ) {
+        ),
+        videoPlayerController = videoPlayerController != null
+            ? ChewieVideoPlayerController(videoPlayerController)
+                as ChewieControllerInterface<T>
+            : chewieVideoController! {
     _initialize();
   }
 
-  ChewieController copyWith({
+  ChewieController<T> copyWith({
     VideoPlayerController? videoPlayerController,
+    ChewieControllerInterface<T>? chewieVideoController,
+    Widget Function()? videoPlayerWidgetBuilder,
     OptionsTranslation? optionsTranslation,
     double? aspectRatio,
     bool? autoInitialize,
@@ -360,8 +371,11 @@ class ChewieController extends ChangeNotifier {
   }) {
     return ChewieController(
       draggableProgressBar: draggableProgressBar ?? this.draggableProgressBar,
-      videoPlayerController:
-          videoPlayerController ?? this.videoPlayerController,
+      videoPlayerController: videoPlayerController,
+      chewieVideoController:
+          chewieVideoController ?? this.videoPlayerController,
+      videoPlayerWidgetBuilder:
+          videoPlayerWidgetBuilder ?? this.videoPlayerWidgetBuilder,
       optionsTranslation: optionsTranslation ?? this.optionsTranslation,
       aspectRatio: aspectRatio ?? this.aspectRatio,
       autoInitialize: autoInitialize ?? this.autoInitialize,
@@ -444,7 +458,10 @@ class ChewieController extends ChangeNotifier {
   Subtitles? subtitle;
 
   /// The controller for the video you want to play
-  final VideoPlayerController videoPlayerController;
+  final ChewieControllerInterface<T> videoPlayerController;
+
+  /// An optional builder used for providing a different video player widget
+  final Widget Function()? videoPlayerWidgetBuilder;
 
   /// Initialize the Video on Startup. This will prep the video for playback.
   final bool autoInitialize;
@@ -566,13 +583,12 @@ class ChewieController extends ChangeNotifier {
 
   bool get isFullScreen => _isFullScreen;
 
-  bool get isPlaying => videoPlayerController.value.isPlaying;
+  bool get isPlaying => videoPlayerController.isPlaying;
 
   Future<dynamic> _initialize() async {
     await videoPlayerController.setLooping(looping);
 
-    if ((autoInitialize || autoPlay) &&
-        !videoPlayerController.value.isInitialized) {
+    if ((autoInitialize || autoPlay) && !videoPlayerController.isInitialized) {
       await videoPlayerController.initialize();
     }
 
@@ -594,7 +610,7 @@ class ChewieController extends ChangeNotifier {
   }
 
   Future<void> _fullScreenListener() async {
-    if (videoPlayerController.value.isPlaying && !_isFullScreen) {
+    if (videoPlayerController.isPlaying && !_isFullScreen) {
       enterFullScreen();
       videoPlayerController.removeListener(_fullScreenListener);
     }
@@ -657,4 +673,130 @@ class ChewieControllerProvider extends InheritedWidget {
   @override
   bool updateShouldNotify(ChewieControllerProvider oldWidget) =>
       controller != oldWidget.controller;
+}
+
+// Define the interface
+abstract class ChewieControllerInterface<T> {
+  ValueNotifier<T> get valueNotifier;
+  bool get isPlaying;
+  Size get size;
+  Duration get valuePosition;
+  bool get isInitialized;
+  double get aspectRatio;
+  bool get isBuffering;
+  String? get errorDescription;
+  double get volume;
+  bool get hasError;
+  Duration get duration;
+  double get playbackSpeed;
+  List<DurationRange> get buffered;
+
+  T get value;
+
+  Future<void> initialize();
+  Future<void> play();
+  Future<void> setLooping(bool looping);
+  Future<void> pause();
+  Future<void> seekTo(Duration position);
+  Future<void> setVolume(double volume);
+  Future<void> setPlaybackSpeed(double speed);
+
+  void addListener(VoidCallback listener);
+  void removeListener(VoidCallback listener);
+}
+
+// Extend VideoPlayerController to conform to ChewieControllerInterface
+class ChewieVideoPlayerController
+    implements ChewieControllerInterface<VideoPlayerValue> {
+  ChewieVideoPlayerController(this._videoPlayerController);
+
+  final VideoPlayerController _videoPlayerController;
+  @override
+  VideoPlayerValue get value => _videoPlayerController.value;
+
+  @override
+  ValueNotifier<VideoPlayerValue> get valueNotifier => _videoPlayerController;
+
+  VideoPlayerController get videoPlayerController => _videoPlayerController;
+
+  @override
+  bool get isPlaying => value.isPlaying;
+
+  @override
+  bool get isInitialized => value.isInitialized;
+
+  @override
+  Size get size => value.size;
+
+  @override
+  Duration get valuePosition => value.position;
+
+  @override
+  double get aspectRatio => value.aspectRatio;
+
+  @override
+  List<DurationRange> get buffered => value.buffered;
+
+  @override
+  Duration get duration => value.duration;
+
+  @override
+  String? get errorDescription => value.errorDescription;
+
+  @override
+  bool get hasError => value.hasError;
+
+  @override
+  bool get isBuffering => value.isBuffering;
+
+  @override
+  double get playbackSpeed => value.playbackSpeed;
+
+  @override
+  double get volume => value.volume;
+
+  @override
+  void addListener(VoidCallback listener) {
+    _videoPlayerController.addListener(listener);
+  }
+
+  @override
+  Future<void> initialize() {
+    return _videoPlayerController.initialize();
+  }
+
+  @override
+  Future<void> pause() {
+    return _videoPlayerController.pause();
+  }
+
+  @override
+  Future<void> play() {
+    return _videoPlayerController.play();
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    _videoPlayerController.removeListener(listener);
+  }
+
+  @override
+  Future<void> seekTo(Duration position) {
+    return _videoPlayerController.seekTo(position);
+  }
+
+  @override
+  Future<void> setLooping(bool looping) {
+    return _videoPlayerController.setLooping(looping);
+  }
+
+  @override
+  Future<void> setPlaybackSpeed(double speed) {
+    return _videoPlayerController.setPlaybackSpeed(speed);
+  }
+
+  @override
+  Future<void> setVolume(double volume) {
+    return _videoPlayerController.setVolume(volume);
+  }
 }

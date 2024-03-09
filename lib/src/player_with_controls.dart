@@ -45,8 +45,11 @@ class PlayerWithControls extends StatelessWidget {
             child: Center(
               child: AspectRatio(
                 aspectRatio: chewieController.aspectRatio ??
-                    chewieController.videoPlayerController.value.aspectRatio,
-                child: VideoPlayer(chewieController.videoPlayerController),
+                    chewieController.videoPlayerController.aspectRatio,
+                child: chewieController.videoPlayerWidgetBuilder?.call() ??
+                    VideoPlayer((chewieController.videoPlayerController
+                            as ChewieVideoPlayerController)
+                        .videoPlayerController),
               ),
             ),
           ),

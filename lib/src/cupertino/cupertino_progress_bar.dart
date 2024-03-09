@@ -1,3 +1,4 @@
+import 'package:chewie/chewie.dart';
 import 'package:chewie/src/chewie_progress_colors.dart';
 import 'package:chewie/src/progress_bar.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +16,7 @@ class CupertinoVideoProgressBar extends StatelessWidget {
   })  : colors = colors ?? ChewieProgressColors(),
         super(key: key);
 
-  final VideoPlayerController controller;
+  final ChewieControllerInterface controller;
   final ChewieProgressColors colors;
   final Function()? onDragStart;
   final Function()? onDragEnd;
